@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    />
+    <title>Documentation · QuantumLive</title>
+    <meta
+      name="description"
+      content="How QuantumLive works: data sources, paper-trading rules, the market microstructure simulator, the latency monitor, keyboard shortcuts and privacy."
+    />
+    <meta name="theme-color" content="#05060b" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="preload" href="assets/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/site.css" />
+    <script src="assets/js/boot.js"></script>
+    <script type="module" src="assets/js/pages/docs.js"></script>
+  </head>
+  <body class="site">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="bg-grid" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href="./" aria-label="QuantumLive home">
+          <img src="favicon.svg" alt="" width="28" height="28" />
+          <span>Quantum<b>Live</b></span>
+        </a>
+        <nav class="site-nav" id="site-nav" aria-label="Primary">
+          <a href="terminal.html">Terminal</a>
+          <a href="markets.html">Markets</a>
+          <a href="docs.html" aria-current="page">Docs</a>
+          <a href="https://github.com/monanyx/qlive" rel="noopener">GitHub</a>
+        </nav>
+        <div class="actions">
+          <button type="button" class="btn btn--ghost btn--icon theme-toggle" data-action="theme" aria-label="Toggle colour theme">
+            <svg class="icon icon-sun" aria-hidden="true"><use href="assets/img/icons.svg#sun" /></svg>
+            <svg class="icon icon-moon" aria-hidden="true"><use href="assets/img/icons.svg#moon" /></svg>
+          </button>
+          <a class="btn btn--primary" href="terminal.html">Launch terminal</a>
+          <button type="button" class="btn btn--ghost btn--icon nav-toggle" id="nav-toggle" aria-controls="site-nav" aria-expanded="false" aria-label="Menu">
+            <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#menu" /></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="container docs">
+      <nav class="toc" aria-label="On this page">
+        <h2>On this page</h2>
+        <ol>
+          <li><a href="#getting-started">Getting started</a></li>
+          <li><a href="#terminal">Terminal tour</a></li>
+          <li><a href="#data-sources">Data sources</a></li>
+          <li><a href="#paper-trading">Paper trading</a></li>
+          <li><a href="#simulator">Simulator model</a></li>
+          <li><a href="#latency">Latency monitor</a></li>
+          <li><a href="#shortcuts">Keyboard shortcuts</a></li>
+          <li><a href="#architecture">Architecture</a></li>
+          <li><a href="#privacy">Privacy &amp; security</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ol>
+      </nav>
+
+      <main id="main" class="prose">
+        <h1>Documentation</h1>
+        <p class="lead">
+          QuantumLive is a static, build-free web app that streams public market data from crypto exchanges straight into your
+          browser, renders it as a trading terminal, and lets you paper-trade against it. This page explains what every part
+          does and exactly how the numbers are produced.
+        </p>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="getting-started">Getting started</h2>
+        <p>Open the <a href="terminal.html">terminal</a>, pick a market and a venue, and you're streaming. Nothing to install, no account.</p>
+        <h3>Run it locally</h3>
+        <p>The site uses native JavaScript modules, which browsers refuse to load from <code>file://</code> URLs, so serve the folder over HTTP:</p>
+        <pre><code>git clone https://github.com/monanyx/qlive.git
+cd qlive
+npm start            # zero-dependency dev server on http://localhost:8080
+# or: python3 -m http.server 8080</code></pre>
+        <h3>Deploy</h3>
+        <p>
+          Any static host works. On GitHub Pages: <em>Settings → Pages → Build and deployment → Deploy from a branch</em>, choose
+          the branch and the <code>/ (root)</code> folder. All paths are relative, so the site works under a project sub-path
+          such as <code>/qlive/</code>.
+        </p>
+        <h3>Deep links</h3>
+        <p>The terminal keeps its state in the URL, so links are shareable:</p>
+        <pre><code>terminal.html?symbol=ETH&amp;exchange=kraken&amp;tf=300</code></pre>
+        <p><code>symbol</code> ∈ BTC, ETH, SOL, XRP, DOGE · <code>exchange</code> ∈ coinbase, binance, kraken, sim · <code>tf</code> ∈ 1, 60, 300, 900, 3600 (seconds).</p>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="terminal">Terminal tour</h2>
+        <h3>Header &amp; stats bar</h3>
+        <p>
+          Choose the market and the data source. The connection pill shows the feed state — <em>Connecting</em>,
+          <em>Subscribing</em>, <em>Live</em>, <em>Reconnecting</em> — and turns purple when you are on the simulator. If a live
+          venue falls back to the simulator, a <strong>Retry live</strong> button appears. The stats bar shows last price, 24h
+          change/high/low/volume, mid, spread (absolute and in basis points), the share of taker volume that bought during the
+          last minute, and the median feed lag.
+        </p>
+        <h3>Order book</h3>
+        <ul>
+          <li><strong>Grouping</strong> merges levels into price buckets (bids round down, asks round up, so no bucket straddles the spread).</li>
+          <li><strong>Depth bars</strong> show <em>cumulative</em> size from the touch on a scale shared by both sides.</li>
+          <li><strong>Imbalance</strong> at the bottom compares resting size in the top 10 levels: <code>(bid − ask) / (bid + ask)</code>.</li>
+          <li>Click a row to copy its price into the ticket; <kbd>Shift</kbd>+click also copies the cumulative size. Amber dots mark your resting orders.</li>
+        </ul>
+        <h3>Chart views</h3>
+        <ul>
+          <li><strong>Candles</strong> — 1s/1m/5m/15m/1h OHLCV built from live trades and back-filled from each venue's REST candles. Your fills appear as arrows, open orders as dashed lines, alerts as dotted lines. <kbd>Alt</kbd>+click sets an alert.</li>
+          <li><strong>Depth</strong> — cumulative bid/ask curves around mid. Scroll or use ± to zoom between ±0.05 % and ±8 %; hover for cumulative size and notional to any price.</li>
+          <li><strong>Heatmap</strong> — time runs left→right, price bottom→top, colour = resting size (log-scaled against an adaptive reference). Green/red lines are best bid/ask; bubbles are trades sized by notional. Watch liquidity get pulled, refilled and swept.</li>
+        </ul>
+        <h3>Activity &amp; account</h3>
+        <p>
+          <strong>Trades</strong> is the time-and-sales tape (colour = aggressor side). <strong>Whales</strong> lists prints above
+          the threshold set in Settings (default $50K). <strong>Liquidations</strong> streams forced orders from Binance USDⓈ-M
+          futures (or the simulator's own). The account panel holds positions, open orders, history, fills, alerts and
+          <strong>Diagnostics</strong>.
+        </p>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="data-sources">Data sources</h2>
+        <p>Every connection is opened directly by your browser to the venue's public, unauthenticated endpoint. No API keys, no proxy.</p>
+        <table>
+          <thead>
+            <tr><th>Venue</th><th>WebSocket</th><th>Channels</th><th>Book model</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Coinbase</td>
+              <td><code>wss://ws-feed.exchange.coinbase.com</code></td>
+              <td><code>level2_batch</code>, <code>matches</code>, <code>ticker</code>, <code>heartbeat</code></td>
+              <td>Full-depth snapshot, then incremental updates batched every 50 ms</td>
+            </tr>
+            <tr>
+              <td>Binance</td>
+              <td><code>wss://stream.binance.com:9443/stream</code><br />(fallback <code>data-stream.binance.vision</code>)</td>
+              <td><code>@depth20@100ms</code>, <code>@aggTrade</code>, <code>@ticker</code></td>
+              <td>Top-20 snapshot every 100 ms (self-healing, no sequence sync needed)</td>
+            </tr>
+            <tr>
+              <td>Kraken</td>
+              <td><code>wss://ws.kraken.com/v2</code></td>
+              <td><code>book</code> (depth 25), <code>trade</code>, <code>ticker</code></td>
+              <td>Snapshot + updates; truncated to the subscribed depth after every update</td>
+            </tr>
+            <tr>
+              <td>Liquidations</td>
+              <td><code>wss://fstream.binance.com/ws/&lt;sym&gt;@forceOrder</code></td>
+              <td><code>forceOrder</code></td>
+              <td>At most one (the latest) liquidation per symbol per second, by Binance's design</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          Candle history comes from the public REST endpoints: Coinbase <code>/products/&lt;id&gt;/candles</code> (no 1s
+          granularity), Binance <code>/api/v3/klines</code> (incl. 1s) and Kraken <code>/0/public/OHLC</code>. If a request
+          fails (network, CORS, region), the chart simply builds from live trades.
+        </p>
+        <h3>Conventions</h3>
+        <ul>
+          <li>Trade <code>side</code> is always the <strong>taker</strong> side. Coinbase reports the maker side in <code>match</code> messages, so it is inverted; Binance's <code>m</code> flag means "buyer is maker".</li>
+          <li>Binance quotes in USDT; it is labelled as such and treated as USD for paper trading.</li>
+          <li>All timestamps are shown in your local time zone.</li>
+        </ul>
+        <h3>Resilience</h3>
+        <ul>
+          <li>Reconnects use exponential backoff with jitter (1 s → 30 s) and cycle through alternate endpoints.</li>
+          <li>A watchdog reconnects if a stream goes quiet for 15 s; a crossed book that persists for 3 s triggers a resubscribe for a fresh snapshot.</li>
+          <li>If a venue delivers no market data within 9 s (blocked network, geo-restriction, outage) the terminal falls back to the simulator and tells you. This can be turned off in Settings.</li>
+        </ul>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="paper-trading">Paper trading</h2>
+        <div class="callout">
+          <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#info" /></svg>
+          <div>Paper trading is simulated entirely in your browser. No order ever reaches an exchange, and no real money is involved.</div>
+        </div>
+        <h3>Order types</h3>
+        <table>
+          <thead>
+            <tr><th>Type</th><th>Behaviour</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Market</td><td>Walks the visible opposite side level by level and fills at the volume-weighted average price. Rejected if visible depth is insufficient. Taker fee.</td></tr>
+            <tr><td>Limit</td><td>If it crosses the spread, it takes liquidity up to its limit price (taker) and the remainder rests. Options: <strong>Post-only</strong> (reject instead of taking) and <strong>IOC</strong> (never rest).</td></tr>
+            <tr><td>Stop</td><td>Rests until the last trade price reaches the stop (buy stops above, sell stops below the market), then executes as a market order.</td></tr>
+          </tbody>
+        </table>
+        <h3>When resting limits fill</h3>
+        <ul>
+          <li><strong>Full fill</strong> when the opposite best price reaches the limit (e.g. best ask ≤ buy limit).</li>
+          <li><strong>Partial fill</strong> when a trade prints <em>through</em> the limit (strictly below a buy / above a sell), capped by the printed size.</li>
+          <li>Prints exactly <em>at</em> the limit do not fill: queue position is unknown, so the engine is deliberately conservative.</li>
+          <li>Resting fills are maker fills, executed at the limit price.</li>
+        </ul>
+        <h3>Accounting</h3>
+        <ul>
+          <li>A single USD cash balance (default $100,000, changeable on reset). Open orders reserve funds: buys reserve <code>qty × price × (1 + taker fee)</code> (stops add a 2 % buffer), sells reserve the asset.</li>
+          <li>Positions use an average-cost basis that includes fees. Selling realises <code>proceeds − fee − avg cost × qty</code>.</li>
+          <li>Equity marks every position to its latest mid price. Default fees are 0.10 % taker / 0.05 % maker (configurable).</li>
+          <li>The account is saved to <code>localStorage</code> and survives reloads. Orders only match while their market is open in the terminal.</li>
+        </ul>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="simulator">Simulator model</h2>
+        <p>
+          The simulator (<code>assets/js/sim/market-sim.js</code>) is a stylised but internally consistent limit-order-book model.
+          It advances in small time steps (25–100 ms), is deterministic for a given seed, and emits exactly the same normalised
+          events as the live adapters — so every view, the paper engine and the latency monitor work identically on it.
+        </p>
+        <h3>1 · Fair price with stochastic volatility</h3>
+        <p>A latent fair price follows geometric Brownian motion whose volatility is itself a log-Ornstein–Uhlenbeck process, with rare Poisson jumps that also kick volatility up (volatility clustering):</p>
+        <code class="math">dlnP = σₜ dW − ½σₜ² dt + J dN,   σₜ = σ̄ · e^hₜ,   dh = −κ_h h dt + ν dB</code>
+        <h3>2 · Spread dynamics</h3>
+        <p>
+          The target spread (in ticks) is an OU process whose mean widens with volatility. Makers continuously quote the target
+          touch — except after a sweep empties it, when re-quoting waits an exponential time with mean <code>refillTau</code>.
+          The visible spread therefore widens transiently after large market orders and mean-reverts.
+        </p>
+        <code class="math">ds = κ_s (μ_s (σₜ/σ̄)^γ − s) dt + η dW,   s ≥ 1 tick</code>
+        <h3>3 · Power-law depth</h3>
+        <p>
+          Resting orders arrive at a distance <em>d</em> from the touch drawn from a heavy-tailed distribution (dense near mid),
+          with size decaying as a power law of distance plus lognormal noise. Occasionally an order is a "wall" (4–14× size)
+          snapped to a round price. Levels are randomly resized or cancelled; stale quotes that the fair price moves through are
+          pulled or, sometimes, traded through.
+        </p>
+        <code class="math">q(d) = Q_touch · (1 + d/x₀)^−α · LogNormal(−σ²/2, σ)</code>
+        <h3>4 · Order flow</h3>
+        <p>
+          Taker orders arrive as a self-exciting <strong>Hawkes</strong> process (bursts of activity), with Pareto-distributed
+          notional (rare whale prints) and a side tilted by short-term momentum. Each order walks the book, printing one trade
+          per price level like an aggregated trade feed, and leaves square-root-law permanent impact.
+        </p>
+        <code class="math">λ(t) = μ + Σᵢ α e^(−β (t − tᵢ)),   notional ~ Pareto(x_m, a),   ΔlnP = ± k √(Q / Q_touch) bps</code>
+        <h3>5 · Liquidations</h3>
+        <p>A sharp move over 15 s (beyond 2.2σ) raises the rate of forced orders on the losing side. They hit the book as market orders, so cascades emerge naturally.</p>
+        <h3>Default parameters</h3>
+        <table>
+          <thead>
+            <tr><th>Parameter</th><th>Value</th><th>Meaning</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>depthAlpha</code> α</td><td>0.6</td><td>Power-law exponent of size vs. distance</td></tr>
+            <tr><td><code>depthX0Bps</code> x₀</td><td>0.8 bps</td><td>Distance scale of the power law</td></tr>
+            <tr><td><code>spawnRate</code></td><td>60 /s per side</td><td>Resting-order arrivals</td></tr>
+            <tr><td><code>levels</code></td><td>360</td><td>Max price levels kept per side</td></tr>
+            <tr><td><code>spreadTicks</code> μ_s</td><td>1.4</td><td>Calm-market mean spread (ticks)</td></tr>
+            <tr><td><code>spreadVolSens</code> γ</td><td>1.6</td><td>Elasticity of the mean spread to volatility</td></tr>
+            <tr><td><code>refillTau</code></td><td>0.6 s</td><td>Mean time to re-quote a swept touch</td></tr>
+            <tr><td><code>tradeRate</code> μ</td><td>3 /s</td><td>Hawkes baseline intensity</td></tr>
+            <tr><td><code>hawkesAlpha</code>, <code>hawkesBeta</code></td><td>0.9, 1.5 /s</td><td>Excitation and decay (branching ratio 0.6)</td></tr>
+            <tr><td><code>tradeAlpha</code> a</td><td>1.22</td><td>Pareto tail of trade notional</td></tr>
+            <tr><td><code>impactK</code> k</td><td>0.45 bps</td><td>Square-root impact coefficient</td></tr>
+            <tr><td><code>volOfVol</code>, <code>volKappa</code></td><td>0.03, 1/240 s</td><td>Log-vol diffusion and mean reversion (stationary sd ≈ 0.33)</td></tr>
+            <tr><td><code>jumpRate</code>, <code>jumpSigma</code></td><td>1/900 s, 0.18 %</td><td>Jump frequency and size</td></tr>
+          </tbody>
+        </table>
+        <p>Per-symbol starting price, long-run volatility and touch notional live in <code>assets/js/core/config.js</code>. When you have seen a live price for a symbol, the simulator starts from it instead.</p>
+        <p>The unit tests check the model's invariants: the book never crosses, deltas reproduce the internal book exactly, prices sit on the tick grid, depth density decays away from mid, trade counts are over-dispersed (clustered) and heavy-tailed, and the spread mean-reverts after a sweep.</p>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="latency">Latency monitor</h2>
+        <p>Open <strong>Diagnostics</strong> in the terminal's account panel. Every stage keeps its last 1,024 samples in a ring buffer; percentiles are computed on demand.</p>
+        <table>
+          <thead>
+            <tr><th>Stage</th><th>What is measured</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Feed lag</td><td>Exchange event timestamp → time the message was received. Includes network transit <em>and</em> any clock offset between your machine and the exchange.</td></tr>
+            <tr><td>Parse</td><td><code>JSON.parse</code> plus normalisation of one message (not applicable to the simulator).</td></tr>
+            <tr><td>Apply</td><td>Applying one normalised event to the book, tape or candles.</td></tr>
+            <tr><td>Render</td><td>All work done in one animation frame to repaint the views that changed.</td></tr>
+            <tr><td>Frame interval</td><td>Time between consecutive painted frames (≈16.7 ms at 60 Hz).</td></tr>
+          </tbody>
+        </table>
+        <div class="callout callout--warn">
+          <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#info" /></svg>
+          <div>
+            Browsers deliberately coarsen <code>performance.now()</code> — to about 100 µs on ordinary pages, ~5 µs on
+            cross-origin-isolated ones — to mitigate timing attacks. Sub-microsecond (let alone nanosecond) figures are not
+            meaningful in a browser, so values are reported in µs/ms and a reading of "0 µs" means "below the timer's resolution".
+          </div>
+        </div>
+        <p>
+          On the simulator, feed lag comes from an emulated network hop (lognormal, median ≈ 30 ms, order-preserving), which you
+          can disable in Settings. Rendering is decoupled from message rate: views mark themselves dirty and are repainted at
+          most once per frame, so a burst of hundreds of messages costs one paint.
+        </p>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="shortcuts">Keyboard shortcuts</h2>
+        <table>
+          <thead>
+            <tr><th>Keys</th><th>Action</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><kbd>B</kbd> / <kbd>S</kbd></td><td>Buy / sell side</td></tr>
+            <tr><td><kbd>L</kbd> <kbd>M</kbd> <kbd>O</kbd></td><td>Limit / market / stop order</td></tr>
+            <tr><td><kbd>/</kbd></td><td>Focus the amount field (<kbd>Enter</kbd> submits, <kbd>Esc</kbd> leaves the field)</td></tr>
+            <tr><td><kbd>1</kbd>–<kbd>5</kbd></td><td>Timeframe 1s · 1m · 5m · 15m · 1h</td></tr>
+            <tr><td><kbd>C</kbd> <kbd>D</kbd> <kbd>H</kbd></td><td>Candles / depth / heatmap</td></tr>
+            <tr><td><kbd>G</kbd> / <kbd>Shift</kbd>+<kbd>G</kbd></td><td>Coarser / finer book grouping</td></tr>
+            <tr><td><kbd>[</kbd> / <kbd>]</kbd></td><td>Previous / next market</td></tr>
+            <tr><td><kbd>A</kbd></td><td>Add a price alert</td></tr>
+            <tr><td><kbd>X</kbd></td><td>Cancel all open orders for the current market</td></tr>
+            <tr><td><kbd>T</kbd></td><td>Toggle light / dark theme</td></tr>
+            <tr><td><kbd>?</kbd></td><td>Show the shortcut help</td></tr>
+          </tbody>
+        </table>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="architecture">Architecture</h2>
+        <p>Plain HTML, CSS and native ES modules — no framework and no build step. The only third-party code is TradingView Lightweight Charts™ (Apache-2.0), vendored locally along with the Inter and JetBrains Mono fonts (OFL).</p>
+        <pre><code>index.html, terminal.html, markets.html, docs.html, 404.html
+sw.js, manifest.webmanifest       offline support / installable PWA
+assets/js/
+  core/      config, formatting, storage, seeded RNG, event emitter
+  feeds/     WebSocket base, exchange adapters, pure normalisers,
+             REST history, feed manager (fallback), multi-ticker
+  market/    order book (sorted levels), candles, market model
+  sim/       market microstructure simulator
+  trading/   paper-trading engine, price alerts
+  metrics/   latency monitor (ring buffers, percentiles, rates)
+  ui/        views: book, candles, depth, heatmap, tape, ticket,
+             account, diagnostics; scheduler, theme, toasts
+  pages/     one entry module per page
+tests/       node:test unit tests + Playwright smoke test</code></pre>
+        <p>The data path is <em>venue → adapter (normalise) → market model → frame scheduler → views</em>, with the paper engine and alerts subscribed to the market model. See the diagram on the <a href="./#architecture">home page</a>.</p>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="privacy">Privacy &amp; security</h2>
+        <ul>
+          <li>There is no backend. The only network traffic is to the exchanges' public endpoints listed above — no analytics, no trackers, no third-party fonts or CDNs.</li>
+          <li>Every page ships a strict Content-Security-Policy: scripts, styles and fonts only from the site itself, and network connections only to the listed exchange hosts.</li>
+          <li>Exchange data is written to the page with <code>textContent</code>, never parsed as HTML.</li>
+          <li>Settings, the paper account, alerts and your watchlist are stored in <code>localStorage</code> under keys prefixed <code>qlive.</code>; clear site data to remove them.</li>
+        </ul>
+
+        <!-- ------------------------------------------------------------ -->
+        <h2 id="faq">FAQ</h2>
+        <h3>Why does a venue fall back to the simulator?</h3>
+        <p>The venue's WebSocket could not deliver data within 9 seconds. Common causes: Binance blocks some regions (including the US), corporate networks block WebSockets, or the venue is down. Try another venue or press <strong>Retry live</strong>.</p>
+        <h3>Why is the liquidations tab empty?</h3>
+        <p>Liquidations come from Binance futures, which may be blocked where you are, and they are bursty — quiet markets can go minutes without one. On the simulator they appear after sharp moves.</p>
+        <h3>Opening <code>index.html</code> from disk shows a warning.</h3>
+        <p>Browsers block JavaScript modules on <code>file://</code>. Run <code>npm start</code> (or any static server) instead.</p>
+        <h3>Can I trade real money?</h3>
+        <p>No. QuantumLive never connects to an account and has no way to place real orders.</p>
+        <h3>Does it work offline?</h3>
+        <p>Yes, once visited: a service worker caches the site, and the simulator needs no network. Install it from your browser's menu to use it like an app.</p>
+
+        <p class="faint mt-3">
+          Market data belongs to the respective exchanges and may be delayed, incomplete or inaccurate. Nothing here is financial advice.
+        </p>
+      </main>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div>
+          <a class="brand" href="./"><img src="favicon.svg" alt="" width="24" height="24" /><span>Quantum<b>Live</b></span></a>
+          <p class="mt-3">Real-time market microstructure terminal. Static site — runs entirely in your browser.</p>
+        </div>
+        <div>
+          <h4>Product</h4>
+          <ul>
+            <li><a href="terminal.html">Terminal</a></li>
+            <li><a href="markets.html">Markets</a></li>
+            <li><a href="terminal.html?exchange=sim">Simulator</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Learn</h4>
+          <ul>
+            <li><a href="#simulator">Simulator model</a></li>
+            <li><a href="#latency">Latency monitor</a></li>
+            <li><a href="#faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/monanyx/qlive" rel="noopener">Source on GitHub</a></li>
+            <li><a href="https://www.tradingview.com/" rel="noopener">Charts by TradingView</a></li>
+          </ul>
+        </div>
+        <p class="fine">© <span data-year>2026</span> QuantumLive. Paper trading only. Not financial advice.</p>
+      </div>
+    </footer>
+  </body>
+</html>

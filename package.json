@@ -1,0 +1,19 @@
+{
+  "name": "qlive",
+  "version": "2.0.0",
+  "description": "QuantumLive \u2014 real-time crypto market microstructure terminal: live L2 order books, candles, depth, liquidity heatmap, paper trading and a market simulator. Static, build-free site.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test \"tests/*.test.js\"",
+    "test:e2e": "node --test \"tests/e2e/*.test.js\"",
+    "assets": "node scripts/generate-assets.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}
