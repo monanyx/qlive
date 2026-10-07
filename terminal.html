@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'sha256-3pRED1tOXas1FXFoPb9TGCjmYe9XQsmO9OV23khV2nY='; img-src 'self' data:; font-src 'self'; connect-src 'self' wss://ws-feed.exchange.coinbase.com https://api.exchange.coinbase.com wss://stream.binance.com:9443 wss://data-stream.binance.vision wss://fstream.binance.com https://api.binance.com wss://ws.kraken.com https://api.kraken.com; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    />
+    <title>Terminal · QuantumLive</title>
+    <meta
+      name="description"
+      content="Real-time crypto trading terminal: live L2 order books from Coinbase, Binance and Kraken, candles, depth, liquidity heatmap and a paper-trading account."
+    />
+    <meta name="theme-color" content="#05060b" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="preload" href="assets/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/jetbrains-mono-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="modulepreload" href="vendor/lightweight-charts/lightweight-charts.mjs" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/terminal.css" />
+    <script src="assets/js/boot.js"></script>
+    <script type="module" src="assets/js/pages/terminal.js"></script>
+  </head>
+  <body class="terminal">
+    <a class="skip-link" href="#order-form">Skip to order ticket</a>
+    <noscript><div class="proto-banner">QuantumLive needs JavaScript to stream market data.</div></noscript>
+
+    <div class="term" id="term" data-view="chart">
+      <!-- ============================================================ header -->
+      <header class="term-header">
+        <a class="brand" href="./" aria-label="QuantumLive home">
+          <img src="favicon.svg" alt="" width="26" height="26" />
+          <span>Quantum<b>Live</b></span>
+        </a>
+        <nav class="term-nav" aria-label="Site">
+          <a href="terminal.html" aria-current="page">Terminal</a>
+          <a href="markets.html">Markets</a>
+          <a href="docs.html">Docs</a>
+        </nav>
+        <span class="header-divider" aria-hidden="true"></span>
+
+        <label class="sr-only" for="symbol">Market</label>
+        <select id="symbol" class="select symbol-select"></select>
+
+        <div class="seg seg--accent venue-seg" id="venue" role="radiogroup" aria-label="Data source">
+          <button type="button" role="radio" data-value="coinbase" aria-checked="true">Coinbase</button>
+          <button type="button" role="radio" data-value="binance" aria-checked="false">Binance</button>
+          <button type="button" role="radio" data-value="kraken" aria-checked="false">Kraken</button>
+          <button type="button" role="radio" data-value="sim" aria-checked="false">Simulator</button>
+        </div>
+        <label class="sr-only" for="venue-select">Data source</label>
+        <select id="venue-select" class="select venue-select">
+          <option value="coinbase">Coinbase</option>
+          <option value="binance">Binance</option>
+          <option value="kraken">Kraken</option>
+          <option value="sim">Simulator</option>
+        </select>
+
+        <div class="conn" id="conn" role="status" aria-live="polite">
+          <span class="dot" id="conn-dot"></span>
+          <span class="conn__text" id="conn-text">Connecting…</span>
+          <button type="button" class="btn btn--xs btn--outline" id="retry-live" hidden>Retry live</button>
+        </div>
+
+        <div class="header-actions">
+          <button type="button" class="btn btn--ghost btn--icon" id="btn-shortcuts" aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)">
+            <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#keyboard" /></svg>
+          </button>
+          <button type="button" class="btn btn--ghost btn--icon" id="btn-settings" aria-label="Settings" title="Settings">
+            <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#gear" /></svg>
+          </button>
+          <button type="button" class="btn btn--ghost btn--icon theme-toggle" id="btn-theme" aria-label="Toggle colour theme" title="Toggle theme (T)">
+            <svg class="icon icon-sun" aria-hidden="true"><use href="assets/img/icons.svg#sun" /></svg>
+            <svg class="icon icon-moon" aria-hidden="true"><use href="assets/img/icons.svg#moon" /></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- ========================================================= stats bar -->
+      <section class="statsbar" aria-label="Market statistics">
+        <div class="stat stat--hero">
+          <div class="pair">
+            <strong id="s-pair">BTC-USD</strong>
+            <span id="s-name">Bitcoin</span>
+          </div>
+          <span class="last-price" id="s-last">—</span>
+        </div>
+        <div class="stat"><span class="stat__label">24h change</span><span class="stat__value" id="s-change">—</span></div>
+        <div class="stat"><span class="stat__label">24h high</span><span class="stat__value" id="s-high">—</span></div>
+        <div class="stat"><span class="stat__label">24h low</span><span class="stat__value" id="s-low">—</span></div>
+        <div class="stat"><span class="stat__label">24h volume</span><span class="stat__value" id="s-vol">—</span></div>
+        <div class="stat"><span class="stat__label">Mid</span><span class="stat__value" id="s-mid">—</span></div>
+        <div class="stat"><span class="stat__label">Spread</span><span class="stat__value" id="s-spread">—</span></div>
+        <div class="stat">
+          <span class="stat__label" title="Share of taker volume that bought over the last minute">1m taker flow</span>
+          <span class="stat__value" id="s-flow">—</span>
+          <span class="flow-bar" aria-hidden="true"><span id="s-flow-bar" class="flow-fill"></span></span>
+        </div>
+        <div class="stat">
+          <span class="stat__label" title="Median exchange-timestamp → receipt delay">Feed lag p50</span>
+          <span class="stat__value" id="s-lag">—</span>
+        </div>
+      </section>
+
+      <!-- ============================================================= grid -->
+      <main class="term-grid" id="main">
+        <!-- order book -->
+        <section class="panel p-book" aria-labelledby="h-book">
+          <header class="panel__head">
+            <h2 class="panel__title" id="h-book">Order book</h2>
+            <div class="spacer"></div>
+            <div class="seg seg--xs" id="book-mode" role="group" aria-label="Book sides">
+              <button type="button" data-value="both" aria-pressed="true" title="Both sides">Both</button>
+              <button type="button" data-value="bids" aria-pressed="false" title="Bids only">Bids</button>
+              <button type="button" data-value="asks" aria-pressed="false" title="Asks only">Asks</button>
+            </div>
+            <label class="sr-only" for="book-group">Price grouping</label>
+            <select id="book-group" class="select select--xs" title="Price grouping (G)"></select>
+          </header>
+          <div class="book" id="book">
+            <div class="book__cols" aria-hidden="true">
+              <span>Price</span><span>Size <span data-unit="base">BTC</span></span><span>Total</span>
+            </div>
+            <div class="book__side book__side--asks" data-book="asks" aria-label="Asks"></div>
+            <div class="book__mid">
+              <span class="book__last num" data-book="last">—</span>
+              <span class="book__spread num" data-book="spread">Spread —</span>
+            </div>
+            <div class="book__side book__side--bids" data-book="bids" aria-label="Bids"></div>
+            <div class="book__imb num" title="Resting size imbalance of the top 10 levels">
+              <span class="up" data-book="imb-bid">B —</span>
+              <span class="imb-bar"><span data-book="imb-bar" class="imb-fill"></span></span>
+              <span class="down" data-book="imb-ask">— S</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- chart -->
+        <section class="panel p-chart" aria-label="Price chart">
+          <header class="panel__head">
+            <div class="tabs" role="tablist" aria-label="Chart type" id="chart-tabs">
+              <button type="button" class="tab" role="tab" data-value="candles" aria-selected="true">Candles</button>
+              <button type="button" class="tab" role="tab" data-value="depth" aria-selected="false" tabindex="-1">Depth</button>
+              <button type="button" class="tab" role="tab" data-value="heatmap" aria-selected="false" tabindex="-1">Heatmap</button>
+            </div>
+            <div class="spacer"></div>
+            <div class="seg seg--xs" id="tf" role="group" aria-label="Timeframe"></div>
+            <div class="seg seg--xs" id="depth-zoom" role="group" aria-label="Depth zoom" hidden>
+              <button type="button" data-zoom="out" aria-label="Zoom out">−</button>
+              <button type="button" data-zoom="in" aria-label="Zoom in">+</button>
+            </div>
+          </header>
+          <div class="chart-wrap">
+            <div class="chart-legend" id="chart-legend" aria-hidden="true"></div>
+            <div class="chart-view" id="candles"></div>
+            <canvas class="chart-view" id="depth" hidden aria-label="Cumulative depth chart" role="img"></canvas>
+            <canvas class="chart-view" id="heatmap" hidden aria-label="Liquidity heatmap" role="img"></canvas>
+            <div class="chart-tip" id="chart-tip" hidden></div>
+            <div class="chart-loading" id="chart-loading"><div><div class="spinner"></div>Loading history…</div></div>
+            <div class="chart-hint" id="chart-hint">Alt+click to set a price alert</div>
+          </div>
+        </section>
+
+        <!-- trades -->
+        <section class="panel p-trades" aria-label="Market activity">
+          <header class="panel__head">
+            <div class="tabs" role="tablist" aria-label="Activity" id="activity-tabs">
+              <button type="button" class="tab" role="tab" id="t-trades" aria-controls="tp-trades" aria-selected="true">Trades</button>
+              <button type="button" class="tab" role="tab" id="t-whales" aria-controls="tp-whales" aria-selected="false" tabindex="-1">Whales</button>
+              <button type="button" class="tab" role="tab" id="t-liqs" aria-controls="tp-liqs" aria-selected="false" tabindex="-1">Liquidations</button>
+            </div>
+          </header>
+          <div class="panel__body" id="tp-trades" role="tabpanel" aria-labelledby="t-trades"></div>
+          <div class="panel__body" id="tp-whales" role="tabpanel" aria-labelledby="t-whales" hidden></div>
+          <div class="panel__body" id="tp-liqs" role="tabpanel" aria-labelledby="t-liqs" hidden></div>
+        </section>
+
+        <!-- account -->
+        <section class="panel p-account" aria-label="Paper account">
+          <header class="panel__head">
+            <div class="tabs" role="tablist" aria-label="Account" id="account-tabs">
+              <button type="button" class="tab" role="tab" id="t-pos" aria-controls="ap-positions" aria-selected="true">Positions</button>
+              <button type="button" class="tab" role="tab" id="t-orders" aria-controls="ap-orders" aria-selected="false" tabindex="-1">
+                Orders<span class="count" id="c-orders" hidden>0</span>
+              </button>
+              <button type="button" class="tab" role="tab" id="t-hist" aria-controls="ap-history" aria-selected="false" tabindex="-1">History</button>
+              <button type="button" class="tab" role="tab" id="t-fills" aria-controls="ap-fills" aria-selected="false" tabindex="-1">Fills</button>
+              <button type="button" class="tab" role="tab" id="t-alerts" aria-controls="ap-alerts" aria-selected="false" tabindex="-1">
+                Alerts<span class="count" id="c-alerts" hidden>0</span>
+              </button>
+              <button type="button" class="tab" role="tab" id="t-diag" aria-controls="ap-diag" aria-selected="false" tabindex="-1" title="Latency &amp; connection diagnostics">Diagnostics</button>
+            </div>
+            <div class="spacer"></div>
+            <button type="button" class="btn btn--xs btn--ghost btn--danger" id="cancel-all" title="Cancel all open orders for this market (X)" hidden>Cancel all</button>
+          </header>
+          <div class="panel__body" id="ap-positions" role="tabpanel" aria-labelledby="t-pos"></div>
+          <div class="panel__body" id="ap-orders" role="tabpanel" aria-labelledby="t-orders" hidden></div>
+          <div class="panel__body" id="ap-history" role="tabpanel" aria-labelledby="t-hist" hidden></div>
+          <div class="panel__body" id="ap-fills" role="tabpanel" aria-labelledby="t-fills" hidden></div>
+          <div class="panel__body" id="ap-alerts" role="tabpanel" aria-labelledby="t-alerts" hidden></div>
+          <div class="panel__body" id="ap-diag" role="tabpanel" aria-labelledby="t-diag" hidden>
+            <div class="diag">
+              <div>
+                <h3>Pipeline latency</h3>
+                <div class="table-scroll">
+                <table class="table mono">
+                  <thead>
+                    <tr>
+                      <th scope="col">Stage</th>
+                      <th scope="col" class="r">Last</th>
+                      <th scope="col" class="r">p50</th>
+                      <th scope="col" class="r">p95</th>
+                      <th scope="col" class="r">p99</th>
+                      <th scope="col" class="r">Max</th>
+                      <th scope="col" class="r">n</th>
+                    </tr>
+                  </thead>
+                  <tbody data-diag="stages"></tbody>
+                </table>
+                </div>
+                <h3 class="mt-3">Feed lag distribution</h3>
+                <canvas class="hist" data-diag="hist-feed" aria-label="Feed lag histogram" role="img"></canvas>
+                <h3 class="mt-2">Render time distribution</h3>
+                <canvas class="hist" data-diag="hist-render" aria-label="Render time histogram" role="img"></canvas>
+              </div>
+              <div>
+                <h3>Connection</h3>
+                <dl class="kv" data-diag="kv"></dl>
+                <h3 class="mt-3">Event log</h3>
+                <ul class="diag-log" data-diag="log"></ul>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- order ticket -->
+        <section class="panel p-form" aria-labelledby="h-form">
+          <header class="panel__head">
+            <h2 class="panel__title" id="h-form">Paper trade</h2>
+            <div class="spacer"></div>
+            <span class="badge badge--accent" title="Orders are simulated locally — nothing is sent to an exchange">Simulated</span>
+          </header>
+          <form class="order-form" id="order-form" novalidate autocomplete="off">
+            <div class="side-toggle" role="radiogroup" aria-label="Side">
+              <button type="button" role="radio" data-value="buy" data-side="buy" aria-checked="true">Buy</button>
+              <button type="button" role="radio" data-value="sell" data-side="sell" aria-checked="false">Sell</button>
+            </div>
+            <div class="seg seg--full" id="f-type" role="radiogroup" aria-label="Order type">
+              <button type="button" role="radio" data-value="limit" aria-checked="true">Limit</button>
+              <button type="button" role="radio" data-value="market" aria-checked="false">Market</button>
+              <button type="button" role="radio" data-value="stop" aria-checked="false">Stop</button>
+            </div>
+            <div class="form-row"><span>Available</span><strong id="f-avail">—</strong></div>
+
+            <div class="field" data-show="limit">
+              <div class="field__label">
+                <label for="f-price">Limit price</label>
+                <span class="quick">
+                  <button type="button" data-fill="bid">Bid</button>
+                  <button type="button" data-fill="mid">Mid</button>
+                  <button type="button" data-fill="ask">Ask</button>
+                </span>
+              </div>
+              <div class="input-wrap">
+                <input class="input" id="f-price" inputmode="decimal" placeholder="0.00" />
+                <span class="unit" data-unit="quote">USD</span>
+              </div>
+            </div>
+
+            <div class="field" data-show="stop" hidden>
+              <div class="field__label">
+                <label for="f-stop">Stop price</label>
+                <span class="quick"><button type="button" data-fill="last">Last</button></span>
+              </div>
+              <div class="input-wrap">
+                <input class="input" id="f-stop" inputmode="decimal" placeholder="0.00" />
+                <span class="unit" data-unit="quote">USD</span>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field__label"><label for="f-amount">Amount</label></div>
+              <div class="input-wrap">
+                <input class="input" id="f-amount" inputmode="decimal" placeholder="0.0000" />
+                <span class="unit" data-unit="base">BTC</span>
+              </div>
+              <div class="pct-row" role="group" aria-label="Percent of available balance">
+                <button type="button" data-pct="25">25%</button>
+                <button type="button" data-pct="50">50%</button>
+                <button type="button" data-pct="75">75%</button>
+                <button type="button" data-pct="100">Max</button>
+              </div>
+            </div>
+
+            <div class="field">
+              <div class="field__label"><label for="f-total">Total</label></div>
+              <div class="input-wrap">
+                <input class="input" id="f-total" inputmode="decimal" placeholder="0.00" />
+                <span class="unit" data-unit="quote">USD</span>
+              </div>
+            </div>
+
+            <div class="form-opts" data-show="limit">
+              <label class="check" title="Reject the order instead of taking liquidity"><input type="checkbox" id="f-post" /> Post-only</label>
+              <label class="check" title="Immediate-or-cancel: never rest on the book"><input type="checkbox" id="f-ioc" /> IOC</label>
+            </div>
+
+            <dl class="estimate" aria-label="Execution estimate">
+              <dt>Est. price</dt>
+              <dd id="e-price">—</dd>
+              <dt>Slippage</dt>
+              <dd id="e-slip">—</dd>
+              <dt>Fee</dt>
+              <dd id="e-fee">—</dd>
+              <dt>Total</dt>
+              <dd id="e-total">—</dd>
+            </dl>
+
+            <div class="form-error" id="f-error" role="alert"></div>
+            <button type="submit" class="btn btn--lg btn--block btn--buy" id="f-submit">Buy BTC</button>
+          </form>
+          <footer class="account-strip" aria-label="Account summary">
+            <div><span>Equity</span><strong id="a-equity">—</strong></div>
+            <div><span>Total PnL</span><strong id="a-pnl">—</strong></div>
+            <div><span>Realised</span><strong id="a-realized">—</strong></div>
+            <div><span>Fees paid</span><strong id="a-fees">—</strong></div>
+          </footer>
+        </section>
+      </main>
+
+      <!-- ========================================================= statusbar -->
+      <footer class="statusbar" aria-label="Status">
+        <span class="sb-item"><span class="dot" id="sb-dot"></span><b id="sb-source">—</b></span>
+        <span class="sb-item">msg/s <b id="sb-msgs">0</b></span>
+        <span class="sb-item">lag p50 <b id="sb-lag">—</b></span>
+        <span class="sb-item">render p95 <b id="sb-render">—</b></span>
+        <span class="sb-item">paints/s <b id="sb-fps">0</b></span>
+        <span class="sb-item"><b id="sb-clock">--:--:-- UTC</b></span>
+        <span class="disclaimer">Paper trading only · not financial advice</span>
+      </footer>
+    </div>
+
+    <!-- ===================================================== mobile tab bar -->
+    <nav class="mobile-tabs" role="tablist" aria-label="Terminal views" id="mobile-tabs">
+      <button type="button" role="tab" data-value="chart" aria-selected="true">
+        <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#chart" /></svg>Chart
+      </button>
+      <button type="button" role="tab" data-value="book" aria-selected="false">
+        <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#book" /></svg>Book
+      </button>
+      <button type="button" role="tab" data-value="trade" aria-selected="false">
+        <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#trade" /></svg>Trade
+      </button>
+      <button type="button" role="tab" data-value="activity" aria-selected="false">
+        <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#pulse" /></svg>Activity
+      </button>
+      <button type="button" role="tab" data-value="account" aria-selected="false">
+        <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#wallet" /></svg>Account
+      </button>
+    </nav>
+
+    <!-- ========================================================== settings -->
+    <dialog class="modal" id="dlg-settings" aria-labelledby="dlg-settings-title">
+      <form method="dialog">
+        <div class="modal__head">
+          <h2 id="dlg-settings-title">Settings</h2>
+          <div class="spacer"></div>
+          <button class="btn btn--ghost btn--icon btn--sm" value="close" aria-label="Close settings">
+            <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#close" /></svg>
+          </button>
+        </div>
+        <div class="modal__body">
+          <div class="settings-group">
+            <h3>Data</h3>
+            <div class="setting">
+              <div class="setting__text">
+                <strong>Fall back to simulator</strong>
+                <span>Switch to the simulator if a live venue sends no data within 9 s.</span>
+              </div>
+              <label class="switch"><input type="checkbox" id="set-fallback" aria-label="Fall back to simulator" /></label>
+            </div>
+            <div class="setting">
+              <div class="setting__text">
+                <strong>Simulated network delay</strong>
+                <span>Deliver simulator events after a realistic ~30 ms network hop.</span>
+              </div>
+              <label class="switch"><input type="checkbox" id="set-simdelay" aria-label="Simulated network delay" /></label>
+            </div>
+            <div class="setting">
+              <div class="setting__text">
+                <strong>Whale threshold</strong>
+                <span>Trades at or above this value are highlighted and listed under Whales.</span>
+              </div>
+              <select class="select select--sm" id="set-whale">
+                <option value="10000">$10K</option>
+                <option value="25000">$25K</option>
+                <option value="50000">$50K</option>
+                <option value="100000">$100K</option>
+                <option value="250000">$250K</option>
+                <option value="1000000">$1M</option>
+              </select>
+            </div>
+          </div>
+          <div class="settings-group">
+            <h3>Paper account</h3>
+            <div class="setting">
+              <div class="setting__text">
+                <strong>Fees</strong>
+                <span>Taker / maker fee applied to simulated fills.</span>
+              </div>
+              <select class="select select--sm" id="set-fees">
+                <option value="0.001/0.0005">0.10% / 0.05%</option>
+                <option value="0.0006/0.0004">0.06% / 0.04%</option>
+                <option value="0.004/0.0025">0.40% / 0.25%</option>
+                <option value="0/0">No fees</option>
+              </select>
+            </div>
+            <div class="setting">
+              <div class="setting__text">
+                <strong>Sound on fills &amp; alerts</strong>
+                <span>Short chime when an order fills or an alert triggers.</span>
+              </div>
+              <label class="switch"><input type="checkbox" id="set-sounds" aria-label="Sound on fills and alerts" /></label>
+            </div>
+            <div class="setting">
+              <div class="setting__text">
+                <strong>Reset account</strong>
+                <span>Cancel all orders and restore the starting balance.</span>
+              </div>
+              <div class="inline-row">
+                <select class="select select--sm" id="set-cash" aria-label="Starting balance">
+                  <option value="10000">$10K</option>
+                  <option value="100000">$100K</option>
+                  <option value="1000000">$1M</option>
+                </select>
+                <button type="button" class="btn btn--sm btn--danger" id="set-reset">Reset</button>
+              </div>
+            </div>
+          </div>
+          <div class="settings-group">
+            <h3>Display</h3>
+            <div class="setting">
+              <div class="setting__text">
+                <strong>Flash price changes</strong>
+                <span>Briefly highlight the last price when it ticks.</span>
+              </div>
+              <label class="switch"><input type="checkbox" id="set-flashes" aria-label="Flash price changes" /></label>
+            </div>
+          </div>
+        </div>
+        <div class="modal__foot">
+          <button class="btn btn--primary" value="close">Done</button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- ========================================================= shortcuts -->
+    <dialog class="modal" id="dlg-keys" aria-labelledby="dlg-keys-title">
+      <form method="dialog">
+        <div class="modal__head">
+          <h2 id="dlg-keys-title">Keyboard shortcuts</h2>
+          <div class="spacer"></div>
+          <button class="btn btn--ghost btn--icon btn--sm" value="close" aria-label="Close shortcuts">
+            <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#close" /></svg>
+          </button>
+        </div>
+        <div class="modal__body">
+          <dl class="shortcut-list">
+            <dt><kbd>B</kbd> / <kbd>S</kbd></dt>
+            <dd>Buy / sell side</dd>
+            <dt><kbd>L</kbd> <kbd>M</kbd> <kbd>O</kbd></dt>
+            <dd>Limit / market / stop order</dd>
+            <dt><kbd>/</kbd></dt>
+            <dd>Focus the amount field</dd>
+            <dt><kbd>Enter</kbd></dt>
+            <dd>Submit the order (while in the ticket)</dd>
+            <dt><kbd>1</kbd>–<kbd>5</kbd></dt>
+            <dd>Timeframe 1s · 1m · 5m · 15m · 1h</dd>
+            <dt><kbd>C</kbd> <kbd>D</kbd> <kbd>H</kbd></dt>
+            <dd>Candles / depth / heatmap</dd>
+            <dt><kbd>G</kbd> / <kbd>⇧ G</kbd></dt>
+            <dd>Coarser / finer book grouping</dd>
+            <dt><kbd>[</kbd> / <kbd>]</kbd></dt>
+            <dd>Previous / next market</dd>
+            <dt><kbd>A</kbd></dt>
+            <dd>Add a price alert (prompts for the price)</dd>
+            <dt><kbd>X</kbd></dt>
+            <dd>Cancel all open orders for this market</dd>
+            <dt><kbd>T</kbd></dt>
+            <dd>Toggle light / dark theme</dd>
+            <dt><kbd>Alt</kbd> + click</dt>
+            <dd>Set an alert at a chart price</dd>
+            <dt><kbd>?</kbd></dt>
+            <dd>Show this help</dd>
+          </dl>
+        </div>
+      </form>
+    </dialog>
+  </body>
+</html>

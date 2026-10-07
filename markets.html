@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' wss://ws-feed.exchange.coinbase.com https://api.exchange.coinbase.com; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    />
+    <title>Markets · QuantumLive</title>
+    <meta name="description" content="Live overview of BTC, ETH, SOL, XRP and DOGE: price, 24h change, range, volume and intraday sparklines." />
+    <meta name="theme-color" content="#05060b" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/icons/icon-192.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="preload" href="assets/fonts/inter-latin-var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/site.css" />
+    <script src="assets/js/boot.js"></script>
+    <script type="module" src="assets/js/pages/markets.js"></script>
+  </head>
+  <body class="site">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="bg-grid" aria-hidden="true"></div>
+
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href="./" aria-label="QuantumLive home">
+          <img src="favicon.svg" alt="" width="28" height="28" />
+          <span>Quantum<b>Live</b></span>
+        </a>
+        <nav class="site-nav" id="site-nav" aria-label="Primary">
+          <a href="terminal.html">Terminal</a>
+          <a href="markets.html" aria-current="page">Markets</a>
+          <a href="docs.html">Docs</a>
+          <a href="https://github.com/monanyx/qlive" rel="noopener">GitHub</a>
+        </nav>
+        <div class="actions">
+          <button type="button" class="btn btn--ghost btn--icon theme-toggle" data-action="theme" aria-label="Toggle colour theme">
+            <svg class="icon icon-sun" aria-hidden="true"><use href="assets/img/icons.svg#sun" /></svg>
+            <svg class="icon icon-moon" aria-hidden="true"><use href="assets/img/icons.svg#moon" /></svg>
+          </button>
+          <a class="btn btn--primary" href="terminal.html">Launch terminal</a>
+          <button type="button" class="btn btn--ghost btn--icon nav-toggle" id="nav-toggle" aria-controls="site-nav" aria-expanded="false" aria-label="Menu">
+            <svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#menu" /></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" class="container">
+      <section class="page-head">
+        <h1>Markets</h1>
+        <p>Live prices for every market the terminal supports. Click a row to open it in the terminal; star the ones you watch.</p>
+      </section>
+
+      <section class="overview" aria-label="Market summary">
+        <div class="ov-card"><span>Top gainer (24h)</span><strong id="ov-gainer">—</strong></div>
+        <div class="ov-card"><span>Top loser (24h)</span><strong id="ov-loser">—</strong></div>
+        <div class="ov-card"><span>Combined 24h volume</span><strong id="ov-volume">—</strong></div>
+      </section>
+
+      <div class="toolbar">
+        <label class="search">
+          <span class="sr-only">Filter markets</span>
+          <svg class="icon icon--sm" aria-hidden="true"><use href="assets/img/icons.svg#search" /></svg>
+          <input class="input" id="filter" type="search" placeholder="Filter markets…" autocomplete="off" />
+        </label>
+        <div class="seg" id="view" role="group" aria-label="Show">
+          <button type="button" data-value="all" aria-pressed="true">All</button>
+          <button type="button" data-value="starred" aria-pressed="false">Starred</button>
+        </div>
+        <div class="spacer"></div>
+        <span class="badge" id="source"><span class="dot dot--warn" id="source-dot"></span><span id="source-text">Connecting…</span></span>
+      </div>
+
+      <div class="market-table-wrap">
+        <table class="table market-table mono" aria-describedby="source-text">
+          <thead>
+            <tr>
+              <th scope="col"><span class="sr-only">Starred</span></th>
+              <th scope="col"><button type="button" data-sort="symbol" aria-sort="none">Market</button></th>
+              <th scope="col" class="r"><button type="button" data-sort="last" aria-sort="none">Price</button></th>
+              <th scope="col" class="r"><button type="button" data-sort="change" aria-sort="descending">24h</button></th>
+              <th scope="col" class="r hide-sm"><button type="button" data-sort="high" aria-sort="none">24h high</button></th>
+              <th scope="col" class="r hide-sm"><button type="button" data-sort="low" aria-sort="none">24h low</button></th>
+              <th scope="col" class="r hide-sm"><button type="button" data-sort="volume" aria-sort="none">24h volume</button></th>
+              <th scope="col" class="r hide-sm">Last 24h</th>
+              <th scope="col" class="r hide-sm"><span class="sr-only">Open</span></th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+      <p class="faint mt-3" id="empty" hidden>No markets match your filter.</p>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div>
+          <a class="brand" href="./"><img src="favicon.svg" alt="" width="24" height="24" /><span>Quantum<b>Live</b></span></a>
+          <p class="mt-3">Real-time market microstructure terminal. Static site — runs entirely in your browser.</p>
+        </div>
+        <div>
+          <h4>Product</h4>
+          <ul>
+            <li><a href="terminal.html">Terminal</a></li>
+            <li><a href="markets.html">Markets</a></li>
+            <li><a href="terminal.html?exchange=sim">Simulator</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Learn</h4>
+          <ul>
+            <li><a href="docs.html">Documentation</a></li>
+            <li><a href="docs.html#data-sources">Data sources</a></li>
+            <li><a href="docs.html#faq">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4>Project</h4>
+          <ul>
+            <li><a href="https://github.com/monanyx/qlive" rel="noopener">Source on GitHub</a></li>
+            <li><a href="docs.html#privacy">Privacy</a></li>
+          </ul>
+        </div>
+        <p class="fine">
+          Prices from the Coinbase Exchange public ticker (USD pairs) when reachable, otherwise simulated and clearly labelled.
+          Not financial advice.
+        </p>
+      </div>
+    </footer>
+  </body>
+</html>

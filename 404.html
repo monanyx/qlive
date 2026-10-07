@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'sha256-sABdO6gk88TgtDLgclladaGC/C0nRePotHjMgM4VehI='; style-src 'self'; img-src 'self' data:; font-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    />
+    <!-- GitHub Pages serves this page for any missing path, possibly nested
+         (e.g. /qlive/a/b). Resolve assets against the site root first. -->
+    <script>(function () {
+  var seg = location.pathname.split('/')[1];
+  var base = /\.github\.io$/.test(location.hostname) && seg && !/\./.test(seg) ? '/' + seg + '/' : '/';
+  var b = document.createElement('base');
+  b.href = base;
+  document.head.appendChild(b);
+})();
+</script>
+    <title>Page not found · QuantumLive</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="assets/css/base.css" />
+    <link rel="stylesheet" href="assets/css/site.css" />
+    <script src="assets/js/boot.js"></script>
+  </head>
+  <body class="site">
+    <div class="bg-grid" aria-hidden="true"></div>
+    <header class="site-header">
+      <div class="container">
+        <a class="brand" href="./" aria-label="QuantumLive home">
+          <img src="favicon.svg" alt="" width="28" height="28" />
+          <span>Quantum<b>Live</b></span>
+        </a>
+      </div>
+    </header>
+    <main class="container notfound">
+      <div>
+        <p class="code gradient-text">404</p>
+        <h1 class="mt-3">This order was never filled.</h1>
+        <p class="muted mt-2">The page you are looking for doesn't exist or has moved.</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="terminal.html">Open the terminal</a>
+          <a class="btn btn--outline btn--lg" href="./">Home</a>
+          <a class="btn btn--ghost btn--lg" href="docs.html">Docs</a>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
